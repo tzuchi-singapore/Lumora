@@ -481,7 +481,7 @@ function vStudio(){
   const head=`<div class="studio-hero"><img src="${IMG.studio}" alt="Journal, compass and map on a desk">
     <div class="in"><span class="eyebrow">Manifest Studio</span><h1>Name it. Map it.<br>Then walk it.</h1></div></div>`;
   const prog=n=>`<div class="steps" style="margin-top:16px">${[1,2,3].map(i=>`<i class="${i<=n?"on":""}"></i>`).join("")}</div>`;
-  const noAI = (!sample&&sampleChecked) ? `<p class="note">${NO_AI_MSG}</p>` : "";
+  const noAI = (!sample&&sampleChecked) ? `<p class="faint" style="font-size:13px">${NO_AI_MSG}</p>` : "";
   if(studio.step==="home"){
     return head+`<section><div class="sh"><h2>Your plans</h2><button class="link" data-new>+ New intention</button></div>
       <div class="goal-list">${S.plans.length?S.plans.map(p=>`<button class="card goal-item" data-open="${p.id}">
@@ -505,24 +505,6 @@ function vStudio(){
       ${c.questions.map((q,i)=>`<div><label class="lbl" for="qa${i}">${esc(q.q)}</label><textarea id="qa${i}" rows="2" placeholder="${esc(q.hint||"")}">${esc(studio.answers[i]||"")}</textarea></div>`).join("")}
       ${studio.error?`<p class="err">${esc(studio.error)}</p>`:""}
       <div class="row"><button class="btn ghost" data-step="ask">Back</button><span class="sp"></span><button class="btn gold" id="goPlan">Create my masterplan</button></div></section>`;
-  }
-  if(studio.step==="manual"&&studio.clarify){
-    const pr=planPrompt(studio.desire,studio.clarify,studio.answers);
-    return head+prog(3)+`<section class="stack">
-      <span class="eyebrow">Use your own Claude</span>
-      <h2 style="font-size:26px">Three quick steps to your masterplan</h2>
-      <div class="card stack" style="gap:10px"><b style="font-weight:500">1. Copy your request</b>
-        <p class="muted" style="font-size:14px">Lumora has written the full request for you, with your intention and answers.</p>
-        <textarea id="mPrompt" rows="4" readonly>${esc(pr)}</textarea>
-        <div><button class="btn gold sm" id="mCopy">Copy request</button></div></div>
-      <div class="card stack" style="gap:10px"><b style="font-weight:500">2. Paste it into Claude</b>
-        <p class="muted" style="font-size:14px">Open a new chat in your Claude app or at claude.ai, paste, and send. Then copy Claude's whole reply.</p>
-        <div><a class="btn ghost sm" href="https://claude.ai/new" target="_blank" rel="noopener">Open Claude</a></div></div>
-      <div class="card stack" style="gap:10px"><b style="font-weight:500">3. Paste Claude's reply here</b>
-        <textarea id="mReply" rows="5" placeholder="Paste Claude's reply here"></textarea>
-        ${studio.error?`<p class="err">${esc(studio.error)}</p>`:""}
-        <div class="row"><button class="btn ghost sm" data-step="clarify">Back</button><span class="sp"></span><button class="btn gold" id="mImport">Create my masterplan</button></div></div>
-    </section>`;
   }
   if(studio.step==="busy"){
     return head+prog(3)+`<section class="card stack"><div class="thinking"><span class="orb"></span><span id="busyMsg">${esc(studio.busyMsg||"Thinking…")}</span></div>
@@ -557,11 +539,13 @@ function vPlan(p){
 
     <div class="card stack"><h3 style="margin:0">Ask your coach</h3>
       <p class="muted" style="font-size:14px">Stuck, or something changed? Ask about this plan.</p>
-      ${sample?`<div class="coach-log" id="coachLog">${(p.coach||[]).map(m=>`<div class="msg ${m.role==="user"?"me":"ai"}">${esc(m.content)}</div>`).join("")}</div>
-      <div class="row"><input type="text" id="coachIn" placeholder="e.g. I only have 30 minutes a day" style="flex:1;min-width:0"><button class="btn gold sm" id="coachGo" ${studio.coachBusy?"disabled":""}>${studio.coachBusy?"…":"Ask"}</button></div>`:`<p class="muted" style="font-size:14px">Copy your plan, paste it into your own Claude chat, and ask your question there.</p><div><button class="btn ghost sm" id="coachCopy">Copy plan for Claude</button></div>`}
+      <div class="coach-log" id="coachLog">${(p.coach||[]).map(m=>`<div class="msg ${m.role==="user"?"me":"ai"}">${esc(m.content)}</div>`).join("")}</div>
+      <div class="row"><input type="text" id="coachIn" placeholder="e.g. I have no time this week" style="flex:1;min-width:0"><button class="btn gold sm" id="coachGo" ${studio.coachBusy?"disabled":""}>${studio.coachBusy?"…":"Ask"}</button></div>
     </div>
 
-    <div class="row"><button class="btn ghost sm" data-export-plan="${p.id}">Export plan</button><span class="sp"></span><button class="btn ghost sm" data-del="${p.id}" style="color:var(--bad)">${studio.confirmDel===p.id?"Tap again to delete":"Delete"}</button></div>
+    ${p.madeBy==="guide"?`<p class="faint" style="font-size:12px">Mapped by Lumora's built-in guide.</p>`:""}
+    <div id="exOut"></div>
+    <div class="row"><button class="btn gold sm" data-export-plan="${p.id}">Save or share plan</button><span class="sp"></span><button class="btn ghost sm" data-del="${p.id}" style="color:var(--bad)">${studio.confirmDel===p.id?"Tap again to delete":"Delete"}</button></div>
   </section>`;
 }
 
@@ -585,10 +569,13 @@ function vMe(){
     <div><div style="font-family:var(--display);font-size:38px;font-variant-numeric:tabular-nums">${mins}</div><div class="faint" style="font-size:12px">minutes</div></div>
   </div></section>
   <section class="stack"><div class="sh" style="margin:0"><h2>Your data</h2></div>
-    <p class="muted" style="font-size:14px">Everything is saved on this device only. Export a copy to keep it safe or move it to another phone.</p>
-    <div class="row"><button class="btn gold sm" id="exJson">Export all (JSON)</button><button class="btn ghost sm" id="exMd">Export plans (Markdown)</button></div>
-    <div class="row"><label class="btn ghost sm" for="imp" style="cursor:pointer">Import backup</label><input type="file" id="imp" accept=".json,application/json" hidden></div>
+    <p class="muted" style="font-size:14px">Everything is saved on this device only. Share your plans as easy-to-read text, or back up everything to move it to another phone.</p>
+    <div class="row"><button class="btn gold sm" id="exMd">Save or share my plans</button><button class="btn ghost sm" id="exJson">Back up everything</button></div>
     <div id="exOut"></div>
+    <details><summary>Restore a backup</summary><div class="stack" style="margin-top:10px;gap:10px">
+      <div class="row"><label class="btn ghost sm" for="imp" style="cursor:pointer">Choose backup file</label><input type="file" id="imp" accept=".json,application/json" hidden></div>
+      <label class="lbl" for="pasteBk">Or paste a copied backup</label><textarea id="pasteBk" rows="3" placeholder="Paste your backup here"></textarea>
+      <div><button class="btn ghost sm" id="pasteGo">Restore</button></div></div></details>
     <details><summary>Remove example content</summary><div style="margin-top:10px"><button class="btn ghost sm" id="clrEx">Remove examples</button></div></details>
   </section>
   <section class="note">Lumora draws on public meditation traditions: compassion, gratitude, forgiveness, visualisation and relaxed countdowns. Visualisation works best with action, and it is not a substitute for medical, financial or legal advice.</section>`;
@@ -611,13 +598,10 @@ const bind={
     document.querySelectorAll("[data-activate]").forEach(b=>b.onclick=()=>{S.activeId=b.dataset.activate;save();toast("Set as your active intention");render();});
     document.querySelectorAll("[data-act]").forEach(b=>b.onclick=()=>{const p=S.plans.find(x=>x.id===studio.viewId);p.done=p.done||{};p.done[b.dataset.act]=!p.done[b.dataset.act];save();render();});
     document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{if(studio.confirmDel===b.dataset.del){S.plans=S.plans.filter(p=>p.id!==b.dataset.del);if(S.activeId===b.dataset.del)S.activeId=S.plans[0]?.id||null;studio.confirmDel=null;studio.step="home";save();render();toast("Plan deleted");}else{studio.confirmDel=b.dataset.del;render();}});
-    document.querySelectorAll("[data-export-plan]").forEach(b=>b.onclick=()=>{const p=S.plans.find(x=>x.id===b.dataset.exportPlan);offer(slug(p.title)+".md",planMd(p));});
+    document.querySelectorAll("[data-export-plan]").forEach(b=>b.onclick=()=>{const p=S.plans.find(x=>x.id===b.dataset.exportPlan);offer(slug(p.title)+".txt",planText(p),"plan");});
     const gc=$("#goClarify"); if(gc) gc.onclick=runClarify;
     const gp=$("#goPlan"); if(gp) gp.onclick=runPlan;
-    const mc=$("#mCopy"); if(mc) mc.onclick=async()=>{const t=$("#mPrompt").value; try{await navigator.clipboard.writeText(t); toast("Copied. Now paste it into Claude");}catch(e){const ta=$("#mPrompt"); ta.focus(); ta.select(); toast("Text selected. Tap Copy");}};
-    const mi=$("#mImport"); if(mi) mi.onclick=importPlan;
     const st=$("#stopAI"); if(st) st.onclick=()=>studio.ctl?.abort();
-    const cc=$("#coachCopy"); if(cc) cc.onclick=async()=>{const p=S.plans.find(x=>x.id===studio.viewId); const t=coachContext(p)+"\n\nMy question: "; try{await navigator.clipboard.writeText(t); toast("Copied. Paste it into Claude and add your question");}catch(e){offer(slug(p.title)+"-for-claude.txt",t);}};
     const cg=$("#coachGo"); if(cg){ cg.onclick=runCoach; $("#coachIn").onkeydown=e=>{if(e.key==="Enter")runCoach();}; const log=$("#coachLog"); if(log) log.scrollTop=log.scrollHeight; }
   },
   journal(){
@@ -627,8 +611,9 @@ const bind={
     document.querySelectorAll("[data-jdel]").forEach(b=>b.onclick=()=>{S.journal=S.journal.filter(e=>e.id!==b.dataset.jdel);save();render();});
   },
   me(){
-    $("#exJson").onclick=()=>offer("lumora-backup-"+today()+".json",JSON.stringify(S,null,2));
-    $("#exMd").onclick=()=>offer("lumora-plans-"+today()+".md",S.plans.map(planMd).join("\n\n---\n\n"));
+    $("#exJson").onclick=()=>offer("lumora-backup-"+today()+".json",JSON.stringify(S),"backup");
+    $("#exMd").onclick=()=>offer("lumora-plans-"+today()+".txt",S.plans.map(planText).join("\n\n──────────\n\n"),"plan");
+    $("#pasteGo").onclick=()=>{ try{ const d=JSON.parse($("#pasteBk").value.trim()); if(!Array.isArray(d.plans)) throw 0; S=Object.assign(blank(),d); save(); toast("Backup restored"); render(); }catch(err){ toast("That text isn't a Lumora backup"); } };
     $("#imp").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!Array.isArray(d.plans))throw 0;S=Object.assign(blank(),d);save();toast("Backup restored");render();}catch(err){toast("That file isn't a Lumora backup");}};r.readAsText(f);};
     $("#clrEx").onclick=()=>{S.plans=S.plans.filter(p=>!p.example);S.journal=S.journal.filter(j=>!j.example);if(!S.plans.find(p=>p.id===S.activeId))S.activeId=S.plans[0]?.id||null;save();toast("Examples removed");render();};
   }
@@ -652,44 +637,446 @@ function planMd(p){
   if(p.meditations?.length) L.push(``,`## Meditation guide`,...p.meditations.map(m=>`- **${PRACTICES[m.practice]?.name||m.practice}** (${m.when}): ${m.focus}`));
   return L.join("\n");
 }
-async function offer(filename,data){
+function planText(p){
+  const d=p.done||{}, box=k=>d[k]?"✅":"⬜";
+  const L=["✨ "+p.title,"",p.vision||"","","Why: "+(p.why||"")];
+  if(p.reality) L.push("","Reality check: "+p.reality);
+  if((p.first7||[]).length) L.push("","FIRST 7 DAYS",...p.first7.map((a,j)=>box("f."+j)+" "+a));
+  (p.milestones||[]).forEach((m,i)=>{ L.push("",String(m.name||"").toUpperCase()+(m.timeframe?" ("+m.timeframe+")":""),...(m.actions||[]).map((a,j)=>box(i+"."+j)+" "+a)); if(m.metric) L.push("Done when: "+m.metric); });
+  if((p.habits||[]).length) L.push("","DAILY HABITS",...p.habits.map(h=>"• "+h));
+  if((p.beliefs||[]).length) L.push("","BELIEFS TO REWRITE",...p.beliefs.map(b=>"Instead of “"+b.from+"”, I say: "+b.to));
+  if((p.affirmations||[]).length) L.push("","AFFIRMATIONS",...p.affirmations.map(a=>"“"+a+"”"));
+  if((p.meditations||[]).length) L.push("","MEDITATIONS",...p.meditations.filter(m=>PRACTICES[m.practice]).map(m=>"• "+PRACTICES[m.practice].name+" ("+m.when+"): "+m.focus));
+  if(p.disclaimer) L.push("",p.disclaimer);
+  L.push("","Made with Lumora");
+  return L.join("\n");
+}
+async function offer(filename,data,kind){
   const out=$("#exOut");
+  if(out) out.innerHTML="";
   if(downloads){
     try{ await downloads.save({filename,data}); toast("Saved "+filename); return; }
     catch(e){ if(e&&e.code==="declined") return; }
   }
   if(!window.claude){
-    try{ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([data],{type:filename.endsWith(".json")?"application/json":"text/markdown"})); a.download=filename; document.body.append(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000); toast("Saved "+filename); return; }catch(e){}
+    try{ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([data],{type:filename.endsWith(".json")?"application/json":"text/plain"})); a.download=filename; document.body.append(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000); toast("Saved "+filename); return; }catch(e){}
   }
-  // fallback: show text to copy
+  // Inside a shared link, downloads may be switched off: copy instead.
+  try{ await navigator.clipboard.writeText(data); toast(kind==="backup"?"Backup copied. Paste it into Notes or email it to yourself.":"Plan copied. Paste it into WhatsApp, Notes or email."); return; }catch(e){}
   const holder = out || $("#view");
   const box=document.createElement("div"); box.className="card stack"; box.style.marginTop="12px";
-  box.innerHTML=`<p class="muted" style="font-size:13px">Downloads aren't available here. Copy the text below instead.</p><textarea rows="8" readonly></textarea><div><button class="btn gold sm">Copy</button></div>`;
-  box.querySelector("textarea").value=data;
-  box.querySelector("button").onclick=async()=>{try{await navigator.clipboard.writeText(data);toast("Copied");}catch(e){box.querySelector("textarea").select();}};
+  box.innerHTML=`<p class="muted" style="font-size:13px">Tap Copy, then paste it into WhatsApp, Notes or email.</p><textarea rows="4" readonly></textarea><div><button class="btn gold sm">Copy</button></div>`;
+  const ta=box.querySelector("textarea"); ta.value=data;
+  box.querySelector("button").onclick=async()=>{try{await navigator.clipboard.writeText(data);toast("Copied");box.remove();}catch(e){ta.focus();ta.select();toast("Text selected. Use your phone's Copy.");}};
   holder.append(box);
 }
 
 /* ---------- AI ---------- */
-const NO_AI_MSG="Tap Continue. Lumora will write the request for you to paste into your own Claude chat, then turn Claude's reply into your masterplan.";
+const NO_AI_MSG="Lumora's built-in guide will read your intention, ask a few questions and map your masterplan right here.";
 const errCopy=c=>({not_granted:"Claude access wasn't allowed for this app. Close and reopen the link, then tap Allow when Claude asks.",not_declared:NO_AI_MSG,capability_disabled:NO_AI_MSG,rate_limited:"Too many requests just now. Wait a minute and try again.",refused:"The coach couldn't help with that intention. Try wording it differently.",invalid_json:"The plan came back incomplete. Please try again.",session_expired:"Please sign in to Claude again.",sampling_disabled:"Claude isn't available on this account."}[c]||"Something went wrong. Please try again.");
+
+/* ---------- Lumora built-in guide: reads an intention and builds a plan on the device (no AI) ---------- */
+const Guide=(()=>{
+const low=s=>String(s||"").toLowerCase();
+const cap=s=>{s=String(s||"").trim().replace(/[.!]+$/,"");return s.charAt(0).toUpperCase()+s.slice(1);};
+const NUMW={a:1,an:1,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,twelve:12,fifteen:15,twenty:20};
+
+const CATS={
+  wealth:{label:"Wealth",kw:["millionaire","million","rich","wealth","money","financial","finance","invest","passive income","debt","savings","retire","net worth","dollar","$","pay off","financially free","earn more"]},
+  business:{label:"Business",kw:["business","company","startup","start-up","brand","online shop","store","entrepreneur","side hustle","clients","customers","e-commerce","ecommerce","sell ","agency","cafe","restaurant","freelance","studio"]},
+  career:{label:"Career",kw:["job","career","promotion","promoted","manager","interview","boss","pay rise","raise","hired","position","leadership","director","head of"]},
+  health:{label:"Health",kw:["lose","weight","kg","kilo","fit","fitness","gym","muscle","run ","running","marathon","healthy","diet","body","strong","exercise","slim","energy","tone"]},
+  love:{label:"Love",kw:["partner","love","relationship","marry","married","marriage","boyfriend","girlfriend","husband","wife","soulmate","dating","start a family","have a baby","romance"]},
+  learning:{label:"Learning",kw:["learn","language","mandarin","english","chinese","japanese","korean","spanish","french","malay","fluent","exam","degree","course","study","certif","skill","piano","guitar","coding","programming","hsk"]},
+  home:{label:"Home",kw:["house","home","flat","hdb","condo","apartment","property","bto","mortgage","renovat","landed"]},
+  peace:{label:"Inner peace",kw:["peace","calm","stress","anxiety","anxious","happy","happiness","confidence","confident","sleep better","purpose","meaning","mindful","grateful","self-love","self love","worry","burnout","balance","joy"]}
+};
+function classify(t){
+  t=" "+low(t)+" ";
+  let best="general",score=0;
+  for(const [k,c] of Object.entries(CATS)){
+    let s=0; c.kw.forEach(w=>{ if(t.includes(w)) s+=w.length>4?2:1; });
+    if(s>score){score=s;best=k;}
+  }
+  return best;
+}
+
+/* ----- reading numbers out of plain language ----- */
+function currency(t){ t=low(t); if(/s\$|sgd/.test(t)) return "S$"; if(/\brm\b|myr/.test(t)) return "RM"; if(/us\$|usd/.test(t)) return "US$"; if(/£/.test(t)) return "£"; if(/€/.test(t)) return "€"; return "$"; }
+function amount(t){
+  t=low(t).replace(/,/g,"");
+  if(/millionaire/.test(t)&&!/\d/.test(t)) return 1e6;
+  const mult=u=>!u?1:/^(k|thousand)$/.test(u)?1e3:/^(m|mil|million)$/.test(u)?1e6:/^(b|billion)$/.test(u)?1e9:1;
+  let m=t.match(/(?:s\$|us\$|\$|sgd|usd|rm|£|€)\s*(\d+(?:\.\d+)?)\s*(k|m|mil|million|thousand|b|billion)?\b/);
+  if(m) return parseFloat(m[1])*mult(m[2]);
+  m=t.match(/(\d+(?:\.\d+)?)\s*(k|mil|million|thousand|billion)\b/);
+  if(m) return parseFloat(m[1])*mult(m[2]);
+  if(/millionaire/.test(t)) return 1e6;
+  return null;
+}
+function allAmounts(t){
+  const out=[]; const re=/(?:s\$|us\$|\$|sgd|usd|rm|£|€)?\s*(\d[\d,]*(?:\.\d+)?)\s*(k|m|mil|million|thousand)?\b/gi; let m;
+  const s=String(t||"");
+  while((m=re.exec(s))){ const raw=m[0]; const hasCur=/[\$£€]|sgd|usd|rm/i.test(raw); const u=(m[2]||"").toLowerCase();
+    if(!hasCur&&!u) continue;
+    let v=parseFloat(m[1].replace(/,/g,"")); v*=!u?1:/^(k|thousand)$/.test(u)?1e3:1e6; out.push({v,i:m.index}); }
+  return out;
+}
+function nearAmount(t,words){
+  const s=low(t); const list=allAmounts(t); if(!list.length) return null;
+  for(const w of words){ const i=s.indexOf(w); if(i>=0){ let best=null,d=1e9; list.forEach(a=>{const dd=Math.abs(a.i-i); if(dd<d){d=dd;best=a.v;}}); if(best!=null&&d<40) return best; } }
+  return null;
+}
+function months(t){
+  t=low(t);
+  let m=t.match(/by\s+(20\d\d)/); if(m){ const y=parseInt(m[1])-new Date().getFullYear(); return Math.max(3,y*12); }
+  m=t.match(/(\d+(?:\.\d+)?|a|an|one|two|three|four|five|six|seven|eight|nine|ten|twelve|fifteen|twenty)\s*(?:\w+\s)?(years?|yrs?|months?|mths?|weeks?|wks?)\b/);
+  if(m){ const n=isNaN(m[1])?NUMW[m[1]]:parseFloat(m[1]); const u=m[2];
+    return /^y/.test(u)?n*12:/^m/.test(u)?n:Math.max(1,Math.round(n/4.3)); }
+  if(/next year/.test(t)) return 12;
+  if(/end of (the )?year|this year/.test(t)){ const mo=12-new Date().getMonth(); return Math.max(2,mo); }
+  return null;
+}
+function hoursPerWeek(t){
+  t=low(t);
+  let m=t.match(/(\d+(?:\.\d+)?)\s*(?:h|hr|hrs|hour|hours)\b[^.]*?(a|per|each|every)?\s*(day|daily|week|weekly)?/);
+  if(m){ const n=parseFloat(m[1]); return /day|daily/.test(m[4]||"")?n*7:n; }
+  m=t.match(/(\d+)\s*(?:min|mins|minutes)\b[^.]*?(day|daily|week)?/);
+  if(m){ const n=parseFloat(m[1])/60; return /week/.test(m[2]||"")?n:n*7; }
+  m=t.match(/(\d+)\s*days?\b/); const d=t.match(/(\d+)\s*(?:min|mins|minutes)/);
+  if(m&&d) return parseInt(m[1])*parseInt(d[1])/60;
+  return null;
+}
+function kilos(t){ t=low(t); let m=t.match(/(\d+(?:\.\d+)?)\s*(kg|kilo|kilos|kilograms)\b/); if(m) return parseFloat(m[1]); m=t.match(/(\d+(?:\.\d+)?)\s*(lb|lbs|pounds)\b/); if(m) return Math.round(parseFloat(m[1])*0.4536); return null; }
+const fmt=(n,cur)=>cur+Math.round(n).toLocaleString("en");
+function dur(m){ if(m<=2) return Math.round(m*4.3)+" weeks"; if(m<24) return Math.round(m)+" months"; const y=m/12; return (Math.round(y*10)/10).toString().replace(/\.0$/,"")+" years"; }
+function when(a,b,M){
+  if(M<=3){ const w1=Math.max(1,Math.round(a*4.33)+1), w2=Math.max(w1,Math.round(b*4.33)); return w1===w2?`Week ${w1}`:`Weeks ${w1}–${w2}`; }
+  if(M<=24){ const m1=Math.round(a)+1, m2=Math.max(m1,Math.round(b)); return m1===m2?`Month ${m1}`:`Months ${m1}–${m2}`; }
+  const y1=Math.round(a/12)+1, y2=Math.max(y1,Math.round(b/12)); return y1===y2?`Year ${y1}`:`Years ${y1}–${y2}`;
+}
+function endDate(m){ const d=new Date(); d.setMonth(d.getMonth()+Math.round(m)); return d.toLocaleDateString("en-GB",{month:"long",year:"numeric"}); }
+
+/* ----- questions, chosen to fit the intention ----- */
+const Q={
+  wealth:[
+    {k:"start",q:"Where are you starting from? Roughly what you earn and have saved today.",hint:"e.g. I earn $4,500 a month and have $12,000 saved"},
+    {k:"save",q:"How much could you save or invest each month right now?",hint:"e.g. $800 a month"},
+    {k:"when",q:"By when would you like to get there?",hint:"e.g. in 10 years"},
+    {k:"edge",q:"What skills, interests or ideas could grow your income?",hint:"e.g. I'm good at sales and I love fitness"},
+    {k:"success",q:"What will this money give you? Describe a day when you have it.",hint:"e.g. I travel with my family and never worry about bills"},
+    {k:"block",q:"What has held you back with money before?",hint:"e.g. impulse spending, fear of investing"}],
+  business:[
+    {k:"idea",q:"What business do you want to build, and who is it for?",hint:"e.g. online fitness coaching for busy mums"},
+    {k:"start",q:"What do you have today? Skills, savings, contacts.",hint:"e.g. 8 years of coaching, $5,000 savings"},
+    {k:"time",q:"How many hours a week can you give it?",hint:"e.g. 8 hours a week"},
+    {k:"when",q:"When do you want your first paying customers, or to go full-time?",hint:"e.g. first customers in 3 months"},
+    {k:"success",q:"What will success look like?",hint:"e.g. 30 regular clients and my own small studio"},
+    {k:"block",q:"What worries you most about starting?",hint:"e.g. nobody will buy, not enough time"}],
+  career:[
+    {k:"role",q:"What role or position do you want?",hint:"e.g. operations manager"},
+    {k:"start",q:"Where are you in your career today?",hint:"e.g. senior executive, 5 years in logistics"},
+    {k:"gap",q:"What skills or experience are you missing?",hint:"e.g. managing a team, budgeting"},
+    {k:"time",q:"How much time a week can you put into growing?",hint:"e.g. 3 hours a week"},
+    {k:"when",q:"By when?",hint:"e.g. within 12 months"},
+    {k:"block",q:"What has held you back so far?",hint:"e.g. I don't speak up in meetings"}],
+  health:[
+    {k:"start",q:"Where are you starting from? Your weight, fitness or routine today.",hint:"e.g. 78 kg, I walk sometimes"},
+    {k:"time",q:"How many days a week can you exercise, and for how long?",hint:"e.g. 3 days, 45 minutes"},
+    {k:"food",q:"What does a normal day of eating look like?",hint:"e.g. skip breakfast, big dinner, bubble tea"},
+    {k:"when",q:"By when would you like to get there?",hint:"e.g. in 4 months"},
+    {k:"success",q:"How will you feel and what will you do when you get there?",hint:"e.g. climb stairs without being tired, wear my old jeans"},
+    {k:"block",q:"What has stopped you before?",hint:"e.g. I lose motivation after 2 weeks"}],
+  love:[
+    {k:"want",q:"What kind of relationship do you want? Describe the person or the feeling.",hint:"e.g. kind, loyal, someone I can laugh with"},
+    {k:"start",q:"Where are you today?",hint:"e.g. single for 2 years, rarely meet new people"},
+    {k:"social",q:"Where could you meet people who share your values?",hint:"e.g. volunteering, hiking groups, friends' gatherings"},
+    {k:"self",q:"What would you like to grow in yourself first?",hint:"e.g. confidence, letting go of my last relationship"},
+    {k:"when",q:"Is there a timeframe on your mind?",hint:"e.g. within a year"},
+    {k:"block",q:"What has made love hard before?",hint:"e.g. I'm shy, I attract the wrong people"}],
+  learning:[
+    {k:"start",q:"What's your level today?",hint:"e.g. complete beginner, I know a few words"},
+    {k:"target",q:"What does success look like?",hint:"e.g. hold a 30-minute conversation, pass HSK 4"},
+    {k:"time",q:"How much time can you study each day or week?",hint:"e.g. 30 minutes a day"},
+    {k:"when",q:"By when?",hint:"e.g. in 12 months"},
+    {k:"why",q:"Why does this matter to you?",hint:"e.g. to talk with my in-laws, for a better job"},
+    {k:"block",q:"What has stopped you before?",hint:"e.g. I start strong then stop"}],
+  home:[
+    {k:"type",q:"What kind of home, and roughly what does it cost?",hint:"e.g. a 4-room resale flat around $550,000"},
+    {k:"save",q:"How much have you saved, and how much can you save each month?",hint:"e.g. $30,000 saved, $1,500 a month"},
+    {k:"income",q:"What's your household income, roughly?",hint:"e.g. $8,000 a month"},
+    {k:"when",q:"By when would you like to move in?",hint:"e.g. in 3 years"},
+    {k:"success",q:"Picture moving day. What do you see and feel?",hint:"e.g. my kids running into their own rooms"},
+    {k:"block",q:"What worries you about it?",hint:"e.g. prices keep rising"}],
+  peace:[
+    {k:"feel",q:"What would feel different in your life if you achieved this?",hint:"e.g. I'd wake up calm and sleep well"},
+    {k:"trigger",q:"What usually takes your peace away?",hint:"e.g. work emails at night, comparing myself to others"},
+    {k:"time",q:"How much quiet time can you give yourself each day?",hint:"e.g. 15 minutes in the morning"},
+    {k:"support",q:"Who or what supports you?",hint:"e.g. my wife, walks in the park"},
+    {k:"when",q:"When would you like to notice a real change?",hint:"e.g. in 2 months"},
+    {k:"block",q:"What has made this hard before?",hint:"e.g. I'm too busy to rest"}],
+  general:[
+    {k:"start",q:"Where are you starting from today?",hint:"e.g. I've thought about it for years but never started"},
+    {k:"time",q:"How much time can you give this each week?",hint:"e.g. 5 hours a week"},
+    {k:"when",q:"By when would you like to achieve it?",hint:"e.g. in 6 months"},
+    {k:"support",q:"What skills, resources or people can help you?",hint:"e.g. my friend has done this before"},
+    {k:"success",q:"What will success look and feel like?",hint:"e.g. I'll feel proud and free"},
+    {k:"block",q:"What has stopped you before, or worries you now?",hint:"e.g. I lose motivation"}]
+};
+
+function interpret(cat,d){
+  const t=low(d), cur=currency(d), T=amount(d), M=months(d), K=kilos(d);
+  const inT=M?` within ${dur(M)}`:"";
+  switch(cat){
+    case "wealth": return T?`You want to build wealth of ${fmt(T,cur)}${inT}. We'll map it as a numbers plan: spend wisely, grow your income, and invest steadily.`:`You want more money and financial freedom${inT}. We'll turn that into clear numbers and steps.`;
+    case "business": return `You want to build your own business${inT}. We'll go from idea to first paying customers, then to steady income.`;
+    case "career": return `You want to move up in your career${inT}. We'll close the skill gap and make sure the right people see your work.`;
+    case "health": return K?`You want to lose ${K} kg${inT} and feel fit. We'll build habits you can keep, not a crash plan.`:`You want a fitter, healthier body${inT}. We'll build movement, food and rest habits that last.`;
+    case "love": return `You want a loving relationship${inT}. We'll work on both sides: becoming ready for love, and putting yourself where it can find you.`;
+    case "learning": return `You want to learn something new${inT}. We'll set a clear target, a daily practice and milestones to prove progress.`;
+    case "home": return `You want a home of your own${inT}. We'll work out the money you need and a saving plan to get there.`;
+    case "peace": return `You want more calm, confidence and joy in daily life${inT}. We'll build small daily practices that change how you feel.`;
+    default: return `You want to ${t.replace(/^(i want to|i want|i'd like to|to)\s+/,"").replace(/[.!]+$/,"")}${inT}. We'll turn it into a clear path with small steps.`;
+  }
+}
+
+function clarify(d){
+  const cat=classify(d);
+  let qs=Q[cat].slice();
+  // skip questions the intention already answers
+  if(months(d)) qs=qs.filter(q=>q.k!=="when");
+  return {goal_title:title(cat,d),category:(CATS[cat]||{label:"Personal goal"}).label,cat,interpretation:interpret(cat,d),questions:qs,guide:true};
+}
+
+function title(cat,d){
+  const cur=currency(d), T=amount(d), K=kilos(d);
+  if(cat==="wealth"&&T) return `Reach ${fmt(T,cur)} in wealth`;
+  if(cat==="health"&&K) return `Lose ${K} kg and feel strong`;
+  let s=cap(String(d).replace(/^(i want to|i want|i'd like to|i would like to|my goal is to|to)\s+/i,""));
+  const w=s.split(/\s+/); if(w.length>9) s=w.slice(0,9).join(" ")+"…";
+  return s;
+}
+
+/* ----- obstacles become beliefs to rewrite ----- */
+function beliefs(block,cat){
+  const t=low(block), out=[];
+  const add=(from,to)=>{ if(out.length<3&&!out.find(b=>b.from===from)) out.push({from,to}); };
+  if(/time|busy|no time|work long/.test(t)) add("I don't have time for this","I make time for what matters, even 15 minutes a day");
+  if(/motivat|lazy|give up|gave up|stop|consisten|discipline|quit/.test(t)) add("I always start strong and then give up","I am someone who shows up, especially on the small days");
+  if(/fear|scared|afraid|nervous|confiden|shy|not good enough/.test(t)) add("I'm not ready yet","I become ready by taking the first step");
+  if(/money|afford|broke|expensive|budget|capital/.test(t)) add("I can't afford to do this","I find creative ways forward with what I have");
+  if(/procrastinat|later|tomorrow/.test(t)) add("I'll start when the time is right","The right time is the next 10 minutes");
+  if(/fail|wrong|mistake|nobody will buy|rejected|reject/.test(t)) add("What if I fail?","Every attempt teaches me what works");
+  if(/spend|impulse|shopping/.test(t)) add("Money slips through my fingers","I decide where every dollar goes");
+  if(/invest/.test(t)) add("Investing is too risky for me","I learn step by step and invest wisely for the long term");
+  if(/wrong people|hurt|ex\b|last relationship|trust/.test(t)) add("Love always ends up hurting me","I choose people who treat me with kindness");
+  if(/tired|energy|sleep/.test(t)) add("I'm too tired to change","Small changes give me more energy, not less");
+  const dflt={
+    wealth:["People like me don't become wealthy","Wealth is a skill, and I am learning it every month"],
+    business:["I'm not a business person","I solve real problems for real people, and that is business"],
+    career:["Promotions go to other people","My work and my voice deserve to be seen"],
+    health:["My body just doesn't change","My body responds to what I do consistently"],
+    love:["The right person isn't out there for me","I am worthy of love, and I am ready to receive it"],
+    learning:["I'm too old to learn this","My brain grows with every practice session"],
+    home:["Owning a home is out of reach for us","Step by step, our home is getting closer"],
+    peace:["I'm just an anxious person","Calm is a skill I practise every day"],
+    general:["This is too big for me","I can do anything one small step at a time"]};
+  const d=dflt[cat]||dflt.general; add(d[0],d[1]);
+  return out;
+}
+
+const MED={
+  wealth:[{practice:"daily-six",when:"Every morning",focus:"In Future vision, see the calm, free day your wealth makes possible."},{practice:"alpha",when:"Before money decisions",focus:"On the mental screen, see yourself choosing wisely and feeling proud."},{practice:"gratitude",when:"On payday",focus:"Give thanks for the money you already have and how it serves you."}],
+  business:[{practice:"daily-six",when:"Every morning",focus:"In Perfect day, see your most important business task done well."},{practice:"alpha",when:"Before sales calls or launches",focus:"See happy customers thanking you."},{practice:"release",when:"After a setback",focus:"Let go of rejection so you can try again tomorrow."}],
+  career:[{practice:"alpha",when:"Before interviews or big meetings",focus:"See yourself speaking clearly and being listened to."},{practice:"daily-six",when:"Every morning",focus:"See yourself already in the new role."},{practice:"release",when:"After a tough day at work",focus:"Release frustration with colleagues or bosses."}],
+  health:[{practice:"alpha",when:"Before workouts",focus:"See your strong, energetic body moving with ease."},{practice:"daily-six",when:"Every morning",focus:"In Perfect day, see yourself choosing good food and moving."},{practice:"sleep",when:"At bedtime",focus:"Good sleep is part of the plan. Let your body recover."}],
+  love:[{practice:"daily-six",when:"Every morning",focus:"In Connection, send love outwards. In Future vision, feel the relationship you want."},{practice:"release",when:"Once a week",focus:"Let go of old relationships so there's room for a new one."},{practice:"gratitude",when:"In the evening",focus:"Notice the love you already give and receive."}],
+  learning:[{practice:"alpha",when:"Before study sessions",focus:"See yourself understanding easily and remembering what you learn."},{practice:"sleep",when:"At bedtime",focus:"Review today's lesson as you drift off. Sleep helps memory."},{practice:"daily-six",when:"Every morning",focus:"See yourself already using the skill with confidence."}],
+  home:[{practice:"daily-six",when:"Every morning",focus:"In Future vision, walk through your new home room by room."},{practice:"gratitude",when:"On payday",focus:"Give thanks as you move money into your home fund."},{practice:"alpha",when:"Before viewings or bank meetings",focus:"See the keys in your hand."}],
+  peace:[{practice:"daily-six",when:"Every morning",focus:"Start the day connected and calm."},{practice:"gratitude",when:"Every evening",focus:"Find three good things in your day."},{practice:"sleep",when:"At bedtime",focus:"Let the day go and rest deeply."}],
+  general:[{practice:"daily-six",when:"Every morning",focus:"In Future vision, feel your goal already achieved."},{practice:"alpha",when:"Before important steps",focus:"See the next step done well."},{practice:"gratitude",when:"Every evening",focus:"Notice one step forward you took today."}]
+};
+const AFF={
+  wealth:["I manage my money with clarity and confidence.","My income grows as I add more value.","Every month, my wealth grows a little more."],
+  business:["I create real value for people who need it.","Customers find me and are glad they did.","I take bold, simple steps every week."],
+  career:["My work is noticed and respected.","I speak up with confidence and clarity.","I am growing into the leader I want to be."],
+  health:["I enjoy moving my body every day.","I choose food that gives me energy.","I get stronger every week."],
+  love:["I am worthy of deep, kind love.","I give and receive love easily.","The right person is drawn to who I truly am."],
+  learning:["I learn quickly and remember easily.","Every day of practice makes me better.","I enjoy the journey of learning."],
+  home:["Our home is coming closer every month.","I save with purpose and joy.","We will make wonderful memories in our home."],
+  peace:["I am safe, calm and at ease.","I can pause and breathe at any moment.","Joy is already here in small moments."],
+  general:["I take one small step every day.","I have everything I need to begin.","I finish what I start."]
+};
+const DISC={wealth:"This is general education, not financial advice. For personal investment decisions, speak to a licensed financial adviser.",home:"This is general education, not financial advice. Check loan limits and grants with your bank or the housing authority.",health:"This is general guidance. If you have a health condition, check with your doctor before starting a new routine."};
+
+/* ----- building the plan ----- */
+function plan(desire,c,answers){
+  const cat=c.cat||classify(desire);
+  const A={}; (c.questions||[]).forEach((q,i)=>{A[q.k||i]=String(answers[i]||"").trim();});
+  const all=desire+" "+Object.values(A).join(" ");
+  const cur=currency(all);
+  const T=amount(desire)||(cat==="wealth"?null:null);
+  const D={wealth:120,business:12,career:12,health:4,love:12,learning:12,home:36,peace:3,general:6}[cat];
+  let M=months(desire)||months(A.when||"")||D;
+  const H=hoursPerWeek(A.time||"")||hoursPerWeek(all);
+  const hrs=H?`${Math.round(H*10)/10} hours a week`:"a set time each week";
+  const ph=(n)=>{ const out=[]; for(let i=0;i<n;i++){ out.push(when(M*i/n,M*(i+1)/n,M)); } return out; };
+  let p={title:c.goal_title||title(cat,desire)};
+  const success=A.success||A.feel||A.want||A.target||"";
+  const by=endDate(M);
+  let reality="", ms=[], first7=[], habits=[];
+
+  if(cat==="wealth"){
+    const S=amount(A.save||"")||nearAmount(all,["a month","per month","monthly","each month"]);
+    const P=nearAmount(A.start||"",["saved","savings","have"])||0;
+    const r=0.05/12, n=M;
+    if(T&&S){
+      const fv=P*Math.pow(1+r,n)+S*(Math.pow(1+r,n)-1)/r;
+      const need=Math.max(0,(T-P*Math.pow(1+r,n))*r/(Math.pow(1+r,n)-1));
+      reality=`At ${fmt(S,cur)} a month and an average 5% yearly return, you'd have about ${fmt(fv,cur)} in ${dur(M)}. Reaching ${fmt(T,cur)} in that time needs about ${fmt(need,cur)} a month, so ${fv>=T?"you're on track if you stay consistent":"this plan grows your income as well as your savings"}.`;
+    } else if(T){
+      const need=T*r/(Math.pow(1+r,M)-1);
+      reality=`To reach ${fmt(T,cur)} in ${dur(M)} with an average 5% yearly return, you'd need to invest about ${fmt(need,cur)} a month. Most people get there by growing income over time, not by saving alone.`;
+    } else reality="Wealth grows from three things: the gap between what you earn and spend, how much you earn, and time invested. This plan works on all three.";
+    const tgt=T?fmt(T,cur):"your target";
+    ms=[
+      {name:"Know your numbers",actions:["Track every expense for 30 days","Write a monthly budget that saves "+(S?fmt(S,cur):"a fixed amount"),"Set an automatic transfer to savings on payday","Build an emergency fund of 3 to 6 months of expenses"],metric:"You know exactly where your money goes"},
+      {name:"Grow your income",actions:[A.edge?`Turn one strength into extra income: ${A.edge}`:"Pick one skill you can earn extra income from","Spend "+hrs+" building that income stream","Ask for a raise or apply for a better-paid role","Earn your first extra "+fmt(300,cur)+" in one month"],metric:"A second source of income"},
+      {name:"Invest steadily",actions:["Learn the basics of low-cost, diversified index funds","Meet a licensed financial adviser to review your plan","Invest a fixed amount every month, no matter the news","Raise your savings rate by 1% every 3 months"],metric:"Investing every month on autopilot"},
+      {name:"Compound and scale",actions:["Review your net worth every quarter","Put pay rises into investments, not lifestyle","Add another income stream","Celebrate every 10% of the way to "+tgt],metric:"Net worth of "+tgt}];
+    first7=["Write down your net worth today: what you own minus what you owe","List every subscription and cancel one you don't use","Open a separate savings account just for this goal","Set up a "+(S?fmt(S,cur):"monthly")+" automatic transfer"];
+    habits=["Check your spending for 2 minutes every evening","Read or listen to 10 minutes about money each day","Wait 48 hours before any non-essential purchase"];
+  }
+  else if(cat==="business"){
+    const idea=A.idea||desire;
+    reality="Most new businesses succeed by testing quickly with real customers before spending much money. Your first goal is not a perfect brand, it's proof that people will pay.";
+    ms=[
+      {name:"Shape the idea",actions:["Write one sentence: who you help, with what problem, and how","Talk to 10 people who fit your ideal customer","List what they already pay for to solve this","Decide your first simple offer and price"],metric:"A clear offer people say they want"},
+      {name:"First paying customers",actions:["Offer a small paid pilot to 3 to 5 people","Set up a simple way to take bookings and payment","Ask every customer for a testimonial","Spend "+hrs+" on selling, not just building"],metric:"First 3 paying customers"},
+      {name:"Build a steady flow",actions:["Post helpful content twice a week where your customers are","Create a referral reward for happy customers","Track leads, sales and income every week","Raise your price once demand is steady"],metric:"Customers coming in every month"},
+      {name:"Grow and systemise",actions:["Write simple step-by-step guides for repeat tasks","Decide when to go full-time based on monthly profit","Reinvest part of profit into the best marketing channel","Set your next income target"],metric:A.success?cap(A.success):"A business that runs without you doing everything"}];
+    first7=["Write your one-sentence offer for: "+idea,"Message 5 people who fit your ideal customer and ask about their problem","Choose a name you can start with today","Block "+(H?Math.round(H)+" hours":"time")+" in your calendar for the business"];
+    habits=["One sales or outreach action every day","Weekly review: what worked, what to drop","Learn from one business you admire each week"];
+  }
+  else if(cat==="career"){
+    const role=A.role||desire;
+    reality="Promotions usually go to people who already do part of the next job, and whose managers know they want it. Skills matter, and so does being seen.";
+    ms=[
+      {name:"Get clear",actions:["Tell your manager you're aiming for: "+role,"Ask what they'd need to see from you","Find 2 people already in that role and ask how they got there","List the skills you're missing"+(A.gap?": "+A.gap:"")],metric:"A written development plan"},
+      {name:"Build the skills",actions:["Spend "+hrs+" on the most important missing skill","Volunteer for one project that stretches you","Find a mentor and meet monthly","Keep a 'wins' list of results with numbers"],metric:"Visible progress on the gap"},
+      {name:"Act at the next level",actions:["Take on part of the target role's work","Share results in team meetings","Help a colleague grow","Ask for feedback every month"],metric:"Others see you in the role"},
+      {name:"Make the move",actions:["Update your CV and LinkedIn with your wins","Ask for the role or apply externally","Practise interview answers using the Alpha Countdown","Negotiate the offer"],metric:"Offer for "+role}];
+    first7=["Write down exactly which role you want and why","Book a meeting with your manager about your growth","Start your wins list with 3 results from this year"];
+    habits=["Write one win every Friday","Read 15 minutes about your field each day","Speak up at least once in every meeting"];
+  }
+  else if(cat==="health"){
+    const K=kilos(desire);
+    if(K){ const wks=Math.ceil(K/0.5); reality=`About 0.5 kg a week is a sustainable pace, so ${K} kg takes around ${wks} weeks${wks>M*4.3?`, a little longer than ${dur(M)}. That's fine: lasting change beats quick change`:""}. Strength training helps you keep muscle while you lose fat.`; M=Math.max(M,wks/4.3); }
+    else reality="Fitness comes from consistency more than intensity. Three steady sessions a week, good sleep and better food choices change your body within a few months.";
+    ms=[
+      {name:"Build the routine",actions:["Exercise "+(A.time?A.time:"3 times a week"),"Walk 7,000 to 8,000 steps a day","Drink water before every meal","Sleep 7 or more hours a night"],metric:"Routine done for 4 weeks in a row"},
+      {name:"Get stronger",actions:["Add 2 strength sessions a week","Fill half your plate with vegetables","Swap sweet drinks for water or tea","Track your weight or measurements once a week"],metric:"Stronger, with clothes fitting better"},
+      {name:"Make it your lifestyle",actions:["Try a new activity you enjoy","Plan healthy meals for busy days","Set a fun fitness challenge, like a 5 km walk or run","Review progress and set your next goal"],metric:success?cap(success):p.title}];
+    first7=["Take a starting photo and measurements","Plan your 3 workout times this week","Clear one unhealthy snack from your home","Prepare a water bottle to carry all day"];
+    habits=["Move every day, even 10 minutes","Protein and vegetables at every meal","Lights out at the same time every night"];
+  }
+  else if(cat==="love"){
+    reality="Love can't be scheduled, but your chances grow when you're emotionally ready, clear about what you want, and meeting new people regularly.";
+    ms=[
+      {name:"Become ready",actions:["Write down the values you want in a partner"+(A.want?": "+A.want:""),"Use Letting Go to release an old relationship","Work on yourself: "+(A.self||"one habit that builds confidence"),"List 3 things you love about yourself"],metric:"You feel whole on your own"},
+      {name:"Open the door",actions:["Join one activity where kind people gather"+(A.social?": "+A.social:""),"Tell close friends you're open to meeting someone","Say yes to more invitations","Start one conversation with someone new each week"],metric:"Meeting new people regularly"},
+      {name:"Build connection",actions:["Go on relaxed, simple first dates","Notice how you feel with each person, not just how they look","Share your values honestly","Give time for trust to grow"],metric:"A relationship that feels safe and joyful"}];
+    first7=["Write a description of the relationship you want","Do the Letting Go practice once","Sign up for one new group or activity","Reconnect with a friend who brings out your best"];
+    habits=["Send love outwards in the Connection phase each morning","Do one kind thing for yourself daily","Put your phone away when you're with people"];
+  }
+  else if(cat==="learning"){
+    const lang=/language|mandarin|english|chinese|japanese|korean|spanish|french|malay|fluent|hsk/.test(low(desire));
+    reality=lang?"Most people need a few hundred hours of practice to hold a comfortable conversation in a new language. Short daily practice beats long weekend sessions.":"Skills grow fastest with short, focused daily practice and regular feedback from someone better than you.";
+    ms=[
+      {name:"Foundations",actions:["Choose one main course, book or app","Study "+(A.time||"20 minutes a day"),lang?"Learn the 300 most common words":"Learn the core basics","Track every study day on a calendar"],metric:"30 days in a row"},
+      {name:"Practise for real",actions:[lang?"Have a weekly conversation with a tutor or language partner":"Get weekly feedback from a teacher or mentor",lang?"Watch a show you enjoy in the language with subtitles":"Copy the work of someone you admire","Review mistakes every week","Take a short test to measure progress"],metric:"You can see clear progress"},
+      {name:"Reach your target",actions:["Practise the exact skill in your target: "+(A.target||desire),"Do a full practice test or real-life challenge","Fix your 3 biggest weak spots","Celebrate and set the next level"],metric:A.target?cap(A.target):"Target reached"}];
+    first7=["Choose your main learning resource","Do your first study session today","Put a daily reminder on your phone","Tell someone about your goal"];
+    habits=["Study at the same time every day","Review yesterday's lesson before starting a new one","Use the skill in real life once a week"];
+  }
+  else if(cat==="home"){
+    const price=amount(A.type||"")||amount(desire);
+    const S=nearAmount(A.save||"",["a month","per month","monthly","each month"]);
+    const P=nearAmount(A.save||"",["saved","savings","have"])||0;
+    if(price){ const dp=price*0.25; const left=Math.max(0,dp-P); const mo=S?Math.ceil(left/S):null;
+      reality=`A common rule of thumb is to have about 25% of the price ready for the down payment and fees: around ${fmt(dp,cur)} for a ${fmt(price,cur)} home.${mo!=null?` At ${fmt(S,cur)} a month on top of what you've saved, that's about ${dur(mo)}.`:""} Rules vary, so check loan limits and grants.`; if(mo&&!months(A.when||"")&&!months(desire)) M=Math.max(mo,6); }
+    else reality="Most buyers need a down payment plus fees, often around a quarter of the price, and a loan the bank approves based on income.";
+    ms=[
+      {name:"Know the numbers",actions:["Decide your price range and area","Check how much a bank or the housing authority will lend you","Check which grants you qualify for","Work out the down payment and fees you need"],metric:"A clear target amount"},
+      {name:"Save with purpose",actions:["Open a separate home fund","Automate "+(S?fmt(S,cur):"a fixed amount")+" into it every month","Cut one big recurring cost","Avoid new loans and keep your credit healthy"],metric:"Home fund on track"},
+      {name:"Find and secure it",actions:["Get an in-principle loan approval","View homes in your target area","Compare at least 5 options","Make your offer"],metric:"Keys in your hand"}];
+    first7=["Write down your ideal home: area, size, must-haves","Check your current savings and monthly surplus","Open a home fund account","Look at 3 recent sale prices in your target area"];
+    habits=["Move money into the home fund on payday","Review the fund total every month","Visualise moving day in your morning practice"];
+  }
+  else if(cat==="peace"){
+    reality="Calm grows from small daily practices more than big changes. Most people notice a real difference after 4 to 8 weeks of steady practice.";
+    ms=[
+      {name:"Create space",actions:["Meditate "+(A.time||"10 minutes")+" every morning","Write 3 good things every night","Notice what takes your peace away"+(A.trigger?": "+A.trigger:""),"Set one boundary around it"],metric:"Daily practice for 3 weeks"},
+      {name:"Deepen",actions:["Use Letting Go once a week","Spend time in nature twice a week","Have one honest conversation you've been avoiding","Cut screen time in the hour before bed"],metric:"You feel calmer most days"},
+      {name:"Live it",actions:["Help someone else each week","Plan regular time for what brings you joy","Review your journal and notice how far you've come","Choose your next area of growth"],metric:success?cap(success):"Peace is part of your normal day"}];
+    first7=["Do The Daily Six tomorrow morning","Write your first 3 good things tonight","Put your phone outside the bedroom at night"];
+    habits=["Three slow breaths before checking your phone","Gratitude journal every evening","A short walk outside every day"];
+  }
+  else {
+    reality="Big goals become real through small steps repeated often. Clear milestones help you see progress and keep going.";
+    ms=[
+      {name:"Start",actions:["Write down exactly what success means for you","Find one person who has done this and learn from them","Give it "+hrs,"Take the first small action"],metric:"You've started"},
+      {name:"Build momentum",actions:["Do one step every week","Track your progress","Remove one thing that gets in the way"+(A.block?": "+A.block:""),"Ask for help where you're stuck"],metric:"Halfway there"},
+      {name:"Finish strong",actions:["Review what's working and do more of it","Push through the last stretch","Celebrate your achievement","Set your next goal"],metric:success?cap(success):p.title}];
+    first7=["Write your goal on a card where you'll see it daily","Block time in your calendar this week","Take one 10-minute step today"];
+    habits=["Visualise your goal every morning","One small action every day","Weekly review on Sunday"];
+  }
+
+  const phases=ph(ms.length); ms.forEach((m,i)=>m.timeframe=phases[i]);
+  const visionDefault={
+    wealth:`It's ${by}. I've reached ${T?fmt(T,cur):"financial freedom"}, and I feel calm and free when I look at my accounts.`,
+    business:`It's ${by}. My business is running, customers are thanking me, and I'm proud of what I built.`,
+    career:`It's ${by}. I'm working as ${A.role||"the leader I wanted to be"}, respected and trusted by my team.`,
+    health:`It's ${by}. I feel light, strong and full of energy, and I love how my body moves.`,
+    love:`It's ${by}. I'm sharing my life with someone kind who loves me as I am.`,
+    learning:`It's ${by}. I'm using my new skill with confidence and enjoying every moment of it.`,
+    home:`It's ${by}. I'm standing in our own home, and every room feels like us.`,
+    peace:`It's ${by}. I wake up calm, I handle challenges with ease, and I feel joy in small moments.`,
+    general:`It's ${by}. I've done it: ${low(p.title)}. I feel proud and grateful.`};
+  let vision=visionDefault[cat]||visionDefault.general;
+  if(success){ const sc=success.replace(/^(i'?ll|i will|i'd|i would|i can)\s+/i,"").replace(/[.!]+$/,"");
+    vision+=/^(i|my|we|our)\b/i.test(success)?" "+cap(success.replace(/[.!]+$/,""))+".":` What I wanted is real: ${sc.charAt(0).toLowerCase()+sc.slice(1)}.`; }
+  const whyDefault={wealth:"To have freedom, security and choices for me and my family.",business:"To build something of my own that helps people and gives me freedom.",career:"To grow, be recognised and earn what my work is worth.",health:"To feel good in my body and have energy for the people I love.",love:"To share my life with someone and build something beautiful together.",learning:A.why||"To grow and open new doors.",home:"To give my family a place that's truly ours.",peace:"To enjoy my life instead of rushing through it.",general:"Because it matters to me, and I want to prove I can do it."};
+  return {
+    title:p.title, vision, why:cap(A.why||A.success||A.feel||whyDefault[cat])+".", reality,
+    milestones:ms, first7, habits,
+    beliefs:beliefs(A.block||"",cat), affirmations:AFF[cat]||AFF.general,
+    meditations:MED[cat]||MED.general, disclaimer:DISC[cat]||"", madeBy:"guide"
+  };
+}
+
+/* ----- coach answers ----- */
+function coach(p,q,next,progress){
+  const t=low(q); const step=next?`Your next step is: "${next}".`:"You've ticked off every action. Time to set your next goal!";
+  if(/time|busy|no time|tired|exhaust/.test(t)) return `Make the step smaller, not the goal. ${step} Can you do just 10 minutes of it today? Small steps done daily beat big plans done never. Before bed, try Before Sleep and see tomorrow's step already done.`;
+  if(/motivat|lazy|give up|gave up|can't be bothered|bored|discipline/.test(t)) return `Motivation follows action, not the other way round. ${step} Set a timer for 5 minutes and begin. Do The Daily Six tomorrow morning and spend extra time in Future vision, feeling why this matters to you.`;
+  if(/stuck|don't know|dont know|how do i|what should|confused|where to start/.test(t)) return `${step} Break it into the smallest possible action, something you could finish in 10 minutes, and do that first. If you need information, find one person who has done it and ask them one question.`;
+  if(/afraid|scared|fear|nervous|anxious|worried|worry/.test(t)) return `Fear is normal when you grow. Name the worst case, then ask how you'd handle it. Usually it's survivable. Use the Alpha Countdown and see the step going well on your mental screen, then take it. ${step}`;
+  if(/money|afford|expensive|cost|budget/.test(t)) return `Start with what you have. Look for a free or low-cost version of the next step, and set aside a small fixed amount each month for this goal. ${step} For big money decisions, talk to a licensed adviser.`;
+  if(/fail|failed|missed|behind|slip|mistake/.test(t)) return `Missing a step is part of every journey. Don't restart from zero; just do the next step today. ${step} Try Letting Go to release the guilt, then begin again gently.`;
+  if(/progress|how am i|doing|far/.test(t)) return `You've completed ${progress}% of your actions. ${progress>=50?"You're past halfway. Keep going!":"Every tick counts. Keep the streak alive."} ${step}`;
+  if(/meditat|which practice|what practice/.test(t)) { const m=(p.meditations||[])[0]; return m?`For this goal, do ${PRACTICES[m.practice]?.name||"The Daily Six"} (${m.when}): ${m.focus}`:"Start with The Daily Six each morning."; }
+  return `Good question. Keep your focus on the next small action. ${step} Visualise it done in your morning practice, then do it before lunch. Ask me about time, motivation, fear, money or progress any time.`;
+}
+
+return {classify,clarify,plan,coach,amount,months,kilos,hoursPerWeek};
+})();
 
 async function runClarify(){
   const d=$("#desire").value.trim(); if(!d){studio.error="Write what you want first.";render();return;}
   studio.desire=d; studio.error="";
-  if(!sample){ studio.step="busy"; studio.busyMsg="Connecting to Claude…"; render(); await sampleReady; }
-  if(!sample){
-    studio.clarify={goal_title:d,category:"Personal goal",manual:true,
-      interpretation:"Answer a few questions. Then Lumora writes the request for your own Claude to turn into a step-by-step masterplan.",
-      questions:[
-        {q:"Where are you starting from today?",hint:"e.g. I have some savings but no side income yet"},
-        {q:"How much time can you give this each week?",hint:"e.g. 5 hours a week, mostly weekends"},
-        {q:"By when would you like to achieve it?",hint:"e.g. within 3 years"},
-        {q:"What skills, resources or support do you already have?",hint:"e.g. I'm good with people, my partner supports me"},
-        {q:"What will success look and feel like?",hint:"e.g. I can travel twice a year without worrying"},
-        {q:"What has stopped you before, or worries you now?",hint:"e.g. I lose motivation after a few weeks"}]};
-    studio.answers={}; studio.step="clarify"; render(); window.scrollTo(0,0); return;
-  }
+  if(!sample&&!sampleChecked){ studio.step="busy"; studio.busyMsg="Getting ready…"; render(); await sampleReady; }
+  if(!sample){ studio.clarify=Guide.clarify(d); studio.answers={}; studio.step="clarify"; render(); window.scrollTo(0,0); return; }
   studio.step="busy"; studio.busyMsg="Reading your intention…"; render();
   studio.ctl=new AbortController();
   const prompt=`You are the coach inside "Lumora", a meditation and goal-achievement app that combines visualisation with practical action planning.
@@ -729,7 +1116,12 @@ Reply with ONLY JSON:
 async function runPlan(){
   saveAnswers();
   const c=studio.clarify;
-  if(!sample){ studio.step="manual"; studio.error=""; render(); window.scrollTo(0,0); return; }
+  if(!sample||studio.clarify.guide){
+    const g=Guide.plan(studio.desire,studio.clarify,studio.answers);
+    const plan=Object.assign({id:uid(),created:today(),desire:studio.desire,done:{},coach:[]},g);
+    S.plans.unshift(plan); S.activeId=plan.id; save();
+    studio.viewId=plan.id; studio.step="plan"; studio.error=""; toast("Masterplan created and set as active"); render(); window.scrollTo(0,0); return;
+  }
   studio.step="busy"; studio.busyMsg="Writing your masterplan…"; studio.error=""; render();
   studio.ctl=new AbortController();
   const prompt=planPrompt(studio.desire,c,studio.answers);
@@ -745,23 +1137,6 @@ async function runPlan(){
   render(); window.scrollTo(0,0);
 }
 
-function parsePlanReply(t){
-  t=String(t||"").trim();
-  const fence=t.match(/```(?:json)?\s*([\s\S]*?)```/); if(fence) t=fence[1];
-  const a=t.indexOf("{"), b=t.lastIndexOf("}");
-  if(a<0||b<=a) return null;
-  try{ return JSON.parse(t.slice(a,b+1)); }catch(e){ return null; }
-}
-function importPlan(){
-  const p=parsePlanReply($("#mReply").value);
-  if(!p||!p.title||!Array.isArray(p.milestones)){ studio.error="That doesn't look like the full reply. Copy everything Claude wrote, including the { and } at the start and end, and paste it again."; render(); return; }
-  p.meditations=(p.meditations||[]).filter(m=>PRACTICES[m.practice]);
-  ["first7","habits","affirmations","beliefs"].forEach(k=>{ if(!Array.isArray(p[k])) p[k]=[]; });
-  const plan=Object.assign({id:uid(),created:today(),desire:studio.desire,done:{},coach:[]},p);
-  S.plans.unshift(plan); S.activeId=plan.id; save();
-  studio.viewId=plan.id; studio.step="plan"; studio.error=""; toast("Masterplan created and set as active"); render(); window.scrollTo(0,0);
-}
-
 function coachContext(p){
   const planCtx=JSON.stringify({title:p.title,desire:p.desire,vision:p.vision,milestones:p.milestones,first7:p.first7,progress:planProgress(p)+"%"}).slice(0,6000);
   return `You are the warm, practical coach in the Lumora meditation and goal app. Here is the user's plan: ${planCtx}
@@ -770,6 +1145,7 @@ Answer their questions about it in under 120 words, plain text, no markdown head
 async function runCoach(){
   const inp=$("#coachIn"); const t=inp.value.trim(); if(!t||studio.coachBusy) return;
   const p=S.plans.find(x=>x.id===studio.viewId); p.coach=p.coach||[];
+  if(!sample){ p.coach.push({role:"user",content:t}); const nx=nextAction(p); p.coach.push({role:"assistant",content:Guide.coach(p,t,nx?nx.text:null,planProgress(p))}); save(); render(); return; }
   p.coach.push({role:"user",content:t}); studio.coachBusy=true; save(); render();
   const rules=coachContext(p);
   const turns=[{role:"user",content:rules},...p.coach.slice(-8)];
